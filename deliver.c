@@ -55,12 +55,13 @@ int main(int argc, char* argv[]) {
     	exit(-1);
 	} 
 
-	// FILE *fp = fopen(fname, "rb");
-	// fseek(fp, 0, SEEK_END);
-	// unsigned int filesize = ftell(fp);
-	// rewind(fp);
+	FILE *fp = fopen(fname, "rb");
+	fseek(fp, 0, SEEK_END);
+	unsigned int filesize = ftell(fp);
+	rewind(fp);
+	unsigned total_frags = (filesize % 1000 == 0) ? filesize/1000 : filesize/1000 + 1;
 
-
+	
 	if (sendto(sockfd, proto, strlen(proto), 0, servinfo->ai_addr, servinfo->ai_addrlen) <= 0) {
 		perror("write error\n");
 		exit(-1);
@@ -70,14 +71,17 @@ int main(int argc, char* argv[]) {
 		perror("write error\n");
 		exit(-1);
 	}
+
 	if (strcmp(buf, YES) == 0) {
 		printf("A file transfer can start.\n");
 	} else {
 		exit(-1);
 	}
+	for (int i = 0; i < total_frags; i++) { 
+	}
 	freeaddrinfo(servinfo);
 	check_close(sockfd);
-	// fclose(fp);
+	fclose(fp);
 	return 0;
 
 }

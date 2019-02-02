@@ -14,5 +14,5 @@ struct packet{
 	unsigned int frag_no; // seq no. of the frag
 	unsigned int size; // size of data
 	char * filename; 
-	char filedata[100];
+	char filedata[1000];
 };
