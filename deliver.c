@@ -5,6 +5,7 @@
 #include <sys/socket.h>
 #include <netinet/in.h>
 #include <netdb.h>
+#include <arpa/inet.h>
 #include <unistd.h>
 #include "ftp.h"
 
@@ -18,7 +19,7 @@ int main(int argc, char* argv[]) {
 	}
 
 	char fname[100], proto[100];
-	char input[BUFFER_SIZE];
+	char input[1000];
 	int sockfd,  n, status;
 	char buf[BUFFER_SIZE];
 	struct sockaddr_in serv_addr;
@@ -77,7 +78,36 @@ int main(int argc, char* argv[]) {
 	} else {
 		exit(-1);
 	}
-	for (int i = 0; i < total_frags; i++) { 
+	int num = 0;
+	char pkt[MAX_LEN];
+	unsigned int offset;
+
+	while ((n = fread(input, sizeof(char), 1000, fp)) > 0) {
+		offset = sprintf(pkt, "%d:%d:%d:%s:", total_frags, num, n, fname);
+		memcpy(pkt + offset, input, n);		
+		if (sendto(sockfd, pkt, strlen(pkt), 0, servinfo->ai_addr, servinfo->ai_addrlen) <= 0) {
+			perror("write error\n");
+			exit(-1);
+		}
+		if (recvfrom(sockfd, buf, BUFFER_SIZE, 0, (struct sockaddr *) &serv_addr, &serv_addr_size) <= 0) {
+			if (errno == EAGAIN) {
+				printf("Timeout: resending packet\n");
+				fseek(fp, -n, SEEK_CUR);
+				continue;
+			} else {
+				perror("Unknown error");
+				exit(1);
+			}
+		}
+		if (!strcmp(buf, NACK)) {
+			fseek(fp, -n, SEEK_CUR);
+			printf("NACK: resending packet\n");
+		}
+		if (strcmp(buf, ACK)) {
+			printf("Unknow responds, terminating connection\n");
+			exit(1);
+		}
+		num++;
 	}
 	freeaddrinfo(servinfo);
 	check_close(sockfd);
